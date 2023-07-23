@@ -22,18 +22,44 @@ class ColumnFileTest {
   @TempDir
   private Path tempDir;
 
-  private ColumnFile create(List<Column> columns, List<String> contents) {
+  private ColumnFile create(
+      List<Column> columns, List<String> lines, String delimiter) {
     try {
       var path = Files.createFile(tempDir.resolve(testFile));
-      Files.write(path, contents);
-      return new ColumnFile(path.toString(), columns);
+      Files.write(path, lines);
+      // use 'null' delimiter to allow testing constructor overloads, i.e., null
+      // means use the constructor that doesn't take a delimiter (and instead
+      // passes in "\t" in the main code)
+      return delimiter == null ? new ColumnFile(path.toString(),
+          columns) : new ColumnFile(path.toString(), columns, delimiter);
     } catch (IOException e) {
       return fail("failed to create file - " + e.getMessage());
     }
   }
 
+  private ColumnFile create(List<Column> columns, List<String> lines) {
+    return create(columns, lines, null);
+  }
+
   @Nested
   class ConstructorTest {
+    @Test
+    void createSingleColumnFile() {
+      assertEquals(1, create(List.of(col1), List.of("col1")).numColumns());
+    }
+
+    @Test
+    void createMultiColumnFile() {
+      assertEquals(2,
+          create(List.of(col1, col2), List.of("col1\tcol2")).numColumns());
+    }
+
+    @Test
+    void createSpaceDelimitedFile() {
+      assertEquals(2,
+          create(List.of(col1, col2), List.of("col1 col2"), " ").numColumns());
+    }
+
     @Test
     void emptyColumnsError() {
       var e = assertThrows(IllegalArgumentException.class,
@@ -65,14 +91,14 @@ class ColumnFileTest {
     @Test
     void duplicateHeaderError() {
       var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1), List.of("col1 col1")));
+          () -> create(List.of(col1), List.of("col1\tcol1")));
       assertEquals("duplicate header 'col1'" + fileMsg, e.getMessage());
     }
 
     @Test
     void unrecognizedHeaderError() {
       var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1), List.of("col1 col2")));
+          () -> create(List.of(col1), List.of("col1\tcol2")));
       assertEquals("unrecognized header 'col2'" + fileMsg, e.getMessage());
     }
 
