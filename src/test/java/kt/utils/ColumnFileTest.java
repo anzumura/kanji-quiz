@@ -158,7 +158,7 @@ class ColumnFileTest {
     }
 
     @Test
-    void nextRowReturnsFalseAtEOF() {
+    void nextRowIsFalseAtEndOfFile() {
       final var file = create(Set.of(col1, col2), "col1\tcol2", "A\tB");
       assertTrue(file.nextRow());
       assertEquals(1, file.currentRow());
