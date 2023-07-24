@@ -67,18 +67,74 @@ public class ColumnFile {
   /**
    * constructor for a tab-delimited ColumnFile
    *
-   * @see #ColumnFile(String, List<Column>, String) for details
+   * @see #ColumnFile(String, List, String) for details
    */
   public ColumnFile(String path, List<Column> columns) throws IOException {
     this(path, columns, "\t");
   }
 
+  private static int getColumnNumber(String name) {
+    return allColumns.computeIfAbsent(name, k -> allColumns.size());
+  }
+
+  /**
+   * @return number of columns in this file
+   */
   public int numColumns() {
     return rowValues.length;
   }
 
-  private static int getColumnNumber(String name) {
-    return allColumns.computeIfAbsent(name, k -> allColumns.size());
+  /**
+   * @return current row number, 0 indicated no data rows have been read yet
+   */
+  public int currentRow() {
+    return currentRow;
+  }
+
+  /**
+   * read the next row, this method must be called before using get methods
+   *
+   * @return true if a row was successfully read
+   * @throws DomainException if the next row cannot be read or has the wrong
+   *                         number of columns
+   */
+  public boolean nextRow() {
+    try {
+      final var row = reader.readLine();
+      if (row != null) {
+        ++currentRow;
+        var pos = 0;
+        // pass -1 to split to force it to keep empty strings at the end
+        for (var field : row.split(delimiter, -1)) {
+          if (pos == numColumns())
+            throw error("too many columns");
+          rowValues[pos++] = field;
+        }
+        if (pos < numColumns())
+          throw error("not enough columns");
+        return true;
+      }
+    } catch (IOException e) {
+      throw error("failed to read next row: " + e.getMessage());
+    }
+    return false;
+  }
+
+  /**
+   * @return the value for the given Column for the current row
+   * @throws DomainException if nextRow hasn't been called yet or the given
+   *                         column isn't part of this file, i.e., it wasn't
+   *                         passed into the ctor
+   */
+  public String get(Column column) {
+    if (currentRow == 0)
+      throw error("'nextRow' must be called before calling 'get'");
+    if (column.getNumber() >= columnToPosition.length)
+      throw error("unrecognized column '" + column + "'");
+    final var pos = columnToPosition[column.getNumber()];
+    if (pos == COLUMN_NOT_FOUND)
+      throw error("invalid column '" + column + "'");
+    return rowValues[pos];
   }
 
   private void processHeaderRow(String row, Map<String, Column> colNames) {
