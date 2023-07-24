@@ -62,9 +62,10 @@ public class ColumnFile {
   }
 
   /**
-   * constructor for a tab-delimited ColumnFile
+   * calls {@link #ColumnFile(String, Set, String)} with delimiter set to 'tab'
    *
-   * @see #ColumnFile(String, Set, String) for details
+   * @param path    text file to be read and processed
+   * @param columns set of columns in the file
    */
   public ColumnFile(String path, Set<Column> columns) {
     this(path, columns, "\t");
@@ -117,7 +118,8 @@ public class ColumnFile {
   }
 
   /**
-   * @return the value for the given Column for the current row
+   * @param column the column to get value from
+   * @return string value for the given {@code column} in current row
    * @throws DomainException if nextRow hasn't been called yet or the given
    *                         column isn't part of this file, i.e., it wasn't
    *                         passed into the ctor
@@ -160,19 +162,33 @@ public class ColumnFile {
     return new DomainException(result);
   }
 
+  /**
+   * represents a column in a {@code ColumnFile}. Instances are used to get
+   * values from each row and the same Column instance can be used in multiple
+   * ColumnFiles.
+   */
   public static final class Column {
     private final String name;
     private final int number;
 
+    /**
+     * @param name name of column used in file header rows
+     */
     public Column(String name) {
       this.name = name;
       this.number = getColumnNumber(name);
     }
 
+    /**
+     * @return column name
+     */
     public String getName() {
       return name;
     }
 
+    /**
+     * @return column number (numbers are globally unique per name)
+     */
     public int getNumber() {
       return number;
     }

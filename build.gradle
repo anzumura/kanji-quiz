@@ -9,6 +9,10 @@ repositories {
   mavenCentral()
 }
 
+javadoc {
+  destinationDir = file("${buildDir}/docs/javadoc")
+}
+
 ext {
   junitVersion = '5.9.2'
 }

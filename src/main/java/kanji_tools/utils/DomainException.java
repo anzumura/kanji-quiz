@@ -1,10 +1,14 @@
 package kanji_tools.utils;
 
 /**
- * DomainException is thrown in when data loaded from files on startup is
+ * DomainException is thrown when data loaded from files on startup is
  * inconsistent or malformed, or when internal program logic errors occur.
  */
 public class DomainException extends RuntimeException {
+
+  /**
+   * @param message exception message
+   */
   public DomainException(String message) {
     super(message);
   }
