@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Set;
 
 import static kanji_tools.utils.ColumnFile.Column;
 import static org.junit.jupiter.api.Assertions.*;
@@ -29,7 +30,7 @@ class ColumnFileTest {
   }
 
   private ColumnFile create(
-      String delimiter, List<Column> columns, String... lines) {
+      String delimiter, Set<Column> columns, String... lines) {
     try {
       final var path = Files.createFile(tempDir.resolve(testFile));
       Files.write(path, List.of(lines));
@@ -43,7 +44,7 @@ class ColumnFileTest {
     }
   }
 
-  private ColumnFile create(List<Column> columns, String... lines) {
+  private ColumnFile create(Set<Column> columns, String... lines) {
     return create(null, columns, lines);
   }
 
@@ -76,78 +77,71 @@ class ColumnFileTest {
   class ConstructorTest {
     @Test
     void createSingleColumnFile() {
-      assertEquals(1, create(List.of(col1), "col1").numColumns());
+      assertEquals(1, create(Set.of(col1), "col1").numColumns());
     }
 
     @Test
     void createMultiColumnFile() {
-      assertEquals(2, create(List.of(col1, col2), "col1\tcol2").numColumns());
+      assertEquals(2, create(Set.of(col1, col2), "col1\tcol2").numColumns());
     }
 
     @Test
     void createSpaceDelimitedFile() {
       assertEquals(2,
-          create(" ", List.of(col1, col2), "col1 col2").numColumns());
+          create(" ", Set.of(col1, col2), "col1 col2").numColumns());
     }
 
     @Test
     void currentRowIsZeroBeforeAnyDataRowsAreProcessed() {
-      assertEquals(0, create(List.of(col1), "col1").currentRow());
+      assertEquals(0, create(Set.of(col1), "col1").currentRow());
     }
 
     @Test
     void emptyColumnsError() {
-      final var e = assertThrows(IllegalArgumentException.class,
-          () -> create(List.of()));
+      final var e = assertThrows(DomainException.class,
+          () -> create(Set.of()));
       assertEquals("must specify at least one column", e.getMessage());
     }
 
     @Test
-    void duplicateColumnError() {
-      final var e = assertThrows(IllegalArgumentException.class,
-          () -> create(List.of(col1, col2, col1)));
-      assertEquals("duplicate column 'col1'", e.getMessage());
-    }
-
-    @Test
     void missingFileError() {
-      final var e = assertThrows(IOException.class,
-          () -> new ColumnFile(testFile, List.of(col1)));
-      assertEquals(testFile + " (No such file or directory)", e.getMessage());
+      final var e = assertThrows(DomainException.class,
+          () -> new ColumnFile(testFile, Set.of(col1)));
+      assertEquals("failed to read header row: " + testFile + " (No such file or directory)", e.getMessage());
     }
 
     @Test
     void missingHeaderRowError() {
       final var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1)));
+          () -> create(Set.of(col1)));
       assertEquals(errorMsg("missing header row"), e.getMessage());
     }
 
     @Test
     void duplicateHeaderError() {
       final var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1), "col1\tcol1"));
+          () -> create(Set.of(col1), "col1\tcol1"));
       assertEquals(errorMsg("duplicate header 'col1'"), e.getMessage());
     }
 
     @Test
     void unrecognizedHeaderError() {
       final var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1), "col1\tcol2"));
+          () -> create(Set.of(col1), "col1\tcol2"));
       assertEquals(errorMsg("unrecognized header 'col2'"), e.getMessage());
     }
 
     @Test
     void oneMissingColumnError() {
       final var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1, col2), "col1"));
+          () -> create(Set.of(col1, col2), "col1"));
       assertEquals(errorMsg("column 'col2' not found"), e.getMessage());
     }
 
     @Test
     void multipleMissingColumnsError() {
       final var e = assertThrows(DomainException.class,
-          () -> create(List.of(col1, col2, col3), "col2"));
+          () -> create(Set.of(col1, col2, col3), "col2"));
       assertEquals(errorMsg("2 columns not found: 'col1', 'col3'"),
           e.getMessage());
     }
@@ -158,14 +152,14 @@ class ColumnFileTest {
     @Test
     void getStringValue() {
       final var expected = "Val";
-      final var file = create(List.of(col1), "col1", expected);
+      final var file = create(Set.of(col1), "col1", expected);
       assertTrue(file.nextRow());
       assertEquals(expected, file.get(col1));
     }
 
     @Test
     void nextRowReturnsFalseAtEOF() {
-      final var file = create(List.of(col1, col2), "col1\tcol2", "A\tB");
+      final var file = create(Set.of(col1, col2), "col1\tcol2", "A\tB");
       assertTrue(file.nextRow());
       assertEquals(1, file.currentRow());
       assertEquals("A", file.get(col1));
@@ -180,7 +174,7 @@ class ColumnFileTest {
 
     @Test
     void valuesCanBeBlank() {
-      final var file = create(List.of(col1, col2, col3), "col1\tcol2\tcol3",
+      final var file = create(Set.of(col1, col2, col3), "col1\tcol2\tcol3",
           "\tB\tC", "A\t\tC", "\t\t");
       file.nextRow(); // first value is empty
       assertEquals("", file.get(col1));
@@ -201,7 +195,7 @@ class ColumnFileTest {
 
     @Test
     void nextRowErrorForRowWithTooManyColumns() {
-      final var file = create(List.of(col1), "col1", "A", "B\tC", "D");
+      final var file = create(Set.of(col1), "col1", "A", "B\tC", "D");
       assertTrue(file.nextRow());
       assertEquals(1, file.currentRow());
       assertEquals("A", file.get(col1));
@@ -218,7 +212,7 @@ class ColumnFileTest {
 
     @Test
     void nextRowErrorForRowWithNotEnoughColumns() {
-      final var file = create(List.of(col1, col2), "col1\tcol2", "A", "B\tC");
+      final var file = create(Set.of(col1, col2), "col1\tcol2", "A", "B\tC");
       final var e = assertThrows(DomainException.class, file::nextRow);
       assertEquals(errorMsg("not enough columns", 1), e.getMessage());
       // call nextRow to move to the second row and continue processing
@@ -230,7 +224,7 @@ class ColumnFileTest {
 
     @Test
     void getBeforeNextRowError() {
-      final var file = create(List.of(col1), "col1", "Val");
+      final var file = create(Set.of(col1), "col1", "Val");
       final var e = assertThrows(DomainException.class, () -> file.get(col1));
       assertEquals(errorMsg("'nextRow' must be called before calling 'get'"),
           e.getMessage());
@@ -238,7 +232,7 @@ class ColumnFileTest {
 
     @Test
     void getUnrecognizedColumnError() {
-      final var file = create(List.of(col1), "col1", "Val");
+      final var file = create(Set.of(col1), "col1", "Val");
       assertTrue(file.nextRow());
       final var col = new Column("Created After");
       final var e = assertThrows(DomainException.class, () -> file.get(col));
@@ -249,7 +243,7 @@ class ColumnFileTest {
     @Test
     void getInvalidColumnError() {
       final var col = new Column("Created Before");
-      final var file = create(List.of(col1), "col1", "Val");
+      final var file = create(Set.of(col1), "col1", "Val");
       assertTrue(file.nextRow());
       final var e = assertThrows(DomainException.class, () -> file.get(col));
       assertEquals(errorMsg("invalid column 'Created Before'", 1),

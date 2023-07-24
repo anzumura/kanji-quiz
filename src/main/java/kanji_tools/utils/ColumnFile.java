@@ -4,7 +4,11 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -24,52 +28,45 @@ public class ColumnFile {
   private int currentRow = 0;
 
   /**
-   * create a ColumnFile and processes the first 'header' row. The list of
-   * columns doesn't need to be in any particular order as long as each column
-   * exists in the file.
+   * create a ColumnFile and processes the first 'header' row. Column order in
+   * the file is determined by reading the 'header' row - each header name must
+   * be unique and exactly match the name of a Column in {@code columns}.
    *
    * @param path      text file to be read and processed
-   * @param columns   list of columns in the file (can be specified in any
-   *                  order)
+   * @param columns   set of columns in the file
    * @param delimiter column delimiter
-   * @throws IOException              if path cannot be opened or read from
-   * @throws IllegalArgumentException if column list is empty or has duplicates
-   * @throws DomainException          if the text file is missing a header
-   *                                  row or the header row doesn't have the
-   *                                  same columns as the column list provided
+   * @throws DomainException path doesn't exist or failed to read headers or
+   *                         headers don't match {@code columns}
    */
-  public ColumnFile(String path, List<Column> columns, String delimiter) throws
-      IOException {
-    // check columns is non-empty and doesn't contain duplicates
+  public ColumnFile(String path, Set<Column> columns, String delimiter) {
     if (columns.isEmpty())
-      throw new IllegalArgumentException("must specify at least one column");
-    final var colNames = new HashMap<String, Column>();
-    for (var c : columns)
-      if (colNames.put(c.getName(), c) != null)
-        throw new IllegalArgumentException("duplicate column '" + c + "'");
-    final var file = new File(path);
+      throw new DomainException("must specify at least one column");
 
-    // set instance fields
+    final var file = new File(path);
     fileName = file.getName();
     this.delimiter = delimiter;
-    reader = new BufferedReader(new FileReader(file));
     rowValues = new String[columns.size()];
     columnToPosition = new int[allColumns.size()];
     Arrays.fill(columnToPosition, COLUMN_NOT_FOUND);
 
     // process the 'header' row
-    final var headerRow = reader.readLine();
-    if (headerRow == null)
-      throw error("missing header row");
-    processHeaderRow(headerRow, colNames);
+    try {
+      reader = new BufferedReader(new FileReader(file));
+      var headerRow = reader.readLine();
+      if (headerRow == null)
+        throw error("missing header row");
+      processHeaderRow(headerRow, columns);
+    } catch (IOException e) {
+      throw new DomainException("failed to read header row: " + e.getMessage());
+    }
   }
 
   /**
    * constructor for a tab-delimited ColumnFile
    *
-   * @see #ColumnFile(String, List, String) for details
+   * @see #ColumnFile(String, Set, String) for details
    */
-  public ColumnFile(String path, List<Column> columns) throws IOException {
+  public ColumnFile(String path, Set<Column> columns) {
     this(path, columns, "\t");
   }
 
@@ -95,8 +92,7 @@ public class ColumnFile {
    * read the next row, this method must be called before using get methods
    *
    * @return true if a row was successfully read
-   * @throws DomainException if the next row cannot be read or has the wrong
-   *                         number of columns
+   * @throws DomainException can't read next row or incorrect number of columns
    */
   public boolean nextRow() {
     try {
@@ -137,24 +133,24 @@ public class ColumnFile {
     return rowValues[pos];
   }
 
-  private void processHeaderRow(String row, Map<String, Column> colNames) {
-    var pos = 0;
+  private void processHeaderRow(String row, Set<Column> columns) {
+    final var cols = columns.stream()
+        .collect(Collectors.toMap(Column::getName, Function.identity()));
     final var foundCols = new HashSet<String>();
+    var pos = 0;
     for (var header : row.split(delimiter)) {
       if (!foundCols.add(header))
         throw error("duplicate header '" + header + "'");
-      final var c = colNames.remove(header);
+      final var c = cols.remove(header);
       if (c == null)
         throw error("unrecognized header '" + header + "'");
       columnToPosition[c.getNumber()] = pos++;
     }
-    if (colNames.size() == 1)
-      throw error(
-          "column '" + colNames.keySet().iterator().next() + "' not found");
-    if (colNames.size() > 1)
-      throw error(
-          colNames.size() + " columns not found: '" + colNames.keySet().stream()
-              .sorted().collect(Collectors.joining("', '")) + "'");
+    if (cols.size() == 1)
+      throw error("column '" + cols.keySet().iterator().next() + "' not found");
+    if (cols.size() > 1)
+      throw error(cols.size() + " columns not found: '" + cols.keySet().stream()
+          .sorted().collect(Collectors.joining("', '")) + "'");
   }
 
   private DomainException error(String msg) {
