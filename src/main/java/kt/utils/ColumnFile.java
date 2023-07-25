@@ -1,9 +1,9 @@
 package kt.utils;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,6 +26,7 @@ public class ColumnFile {
   private final String[] rowValues;
   private final int[] columnToPosition;
   private int currentRow = 0;
+  private boolean closed = false;
 
   /**
    * create a ColumnFile and processes the first 'header' row. Column order in
@@ -38,12 +39,11 @@ public class ColumnFile {
    * @throws DomainException path doesn't exist or failed to read headers or
    *                         headers don't match {@code columns}
    */
-  public ColumnFile(String path, Set<Column> columns, String delimiter) {
+  public ColumnFile(Path path, Set<Column> columns, String delimiter) {
     if (columns.isEmpty())
       throw new DomainException("must specify at least one column");
 
-    final var file = new File(path);
-    fileName = file.getName();
+    fileName = path.getFileName().toString();
     this.delimiter = delimiter;
     rowValues = new String[columns.size()];
     columnToPosition = new int[allColumns.size()];
@@ -51,7 +51,7 @@ public class ColumnFile {
 
     // process the 'header' row
     try {
-      reader = new BufferedReader(new FileReader(file));
+      reader = Files.newBufferedReader(path);
       var headerRow = reader.readLine();
       if (headerRow == null)
         throw error("missing header row");
@@ -62,12 +62,12 @@ public class ColumnFile {
   }
 
   /**
-   * calls {@link #ColumnFile(String, Set, String)} with delimiter set to 'tab'
+   * calls {@link #ColumnFile(Path, Set, String)} with delimiter set to 'tab'
    *
    * @param path    text file to be read and processed
    * @param columns set of columns in the file
    */
-  public ColumnFile(String path, Set<Column> columns) {
+  public ColumnFile(Path path, Set<Column> columns) {
     this(path, columns, "\t");
   }
 
@@ -90,12 +90,17 @@ public class ColumnFile {
   }
 
   /**
-   * read the next row, this method must be called before using get methods
+   * read next row, this method must be called before calling get methods. If
+   * there's no more rows then false is returned and the file is closed - thus
+   * calling nextRow again after the file is closed raises an exception.
    *
-   * @return true if a row was successfully read
-   * @throws DomainException can't read next row or incorrect number of columns
+   * @return true if a row was read or false if there is no more data
+   * @throws DomainException if reading the next row fails or has incorrect
+   *                         number of columns
    */
   public boolean nextRow() {
+    if (closed)
+      throw new DomainException("file: " + fileName + "' has been closed");
     try {
       final var row = reader.readLine();
       if (row != null) {
@@ -114,6 +119,7 @@ public class ColumnFile {
     } catch (IOException e) {
       throw error("failed to read next row: " + e.getMessage());
     }
+    closeReader();
     return false;
   }
 
@@ -160,6 +166,15 @@ public class ColumnFile {
     if (currentRow > 0)
       result += ", row: " + currentRow;
     return new DomainException(result);
+  }
+
+  private void closeReader() {
+    try {
+      reader.close();
+      closed = true;
+    } catch (IOException e) {
+      throw new DomainException("failed to close file: " + e.getMessage());
+    }
   }
 
   /**

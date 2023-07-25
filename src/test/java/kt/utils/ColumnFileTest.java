@@ -37,8 +37,8 @@ class ColumnFileTest {
       // use 'null' delimiter to allow testing constructor overloads, i.e., null
       // means use the constructor that doesn't take a delimiter (and instead
       // passes in "\t" in the main code)
-      return delimiter == null ? new ColumnFile(path.toString(), columns) :
-          new ColumnFile(path.toString(), columns, delimiter);
+      return delimiter == null ? new ColumnFile(path, columns) :
+          new ColumnFile(path, columns, delimiter);
     } catch (IOException e) {
       return fail("failed to create file - " + e.getMessage());
     }
@@ -105,9 +105,8 @@ class ColumnFileTest {
     @Test
     void missingFileError() {
       final var e = assertThrows(DomainException.class,
-          () -> new ColumnFile(testFile, Set.of(col1)));
-      assertEquals("failed to read header row: " + testFile
-          + " (No such file or directory)", e.getMessage());
+          () -> new ColumnFile(Path.of(testFile), Set.of(col1)));
+      assertEquals("failed to read header row: " + testFile, e.getMessage());
     }
 
     @Test
@@ -148,9 +147,49 @@ class ColumnFileTest {
   }
 
   @Nested
+  class NextRowTest {
+    @Test
+    void calledAfterCloseError() {
+      final var file = create(Set.of(col1), "col1");
+      assertFalse(file.nextRow());
+      final var e = assertThrows(DomainException.class, file::nextRow);
+      assertEquals("file: " + testFile + "' has been closed", e.getMessage());
+    }
+
+    @Test
+    void tooManyColumnsError() {
+      final var file = create(Set.of(col1), "col1", "A", "B\tC", "D");
+      assertTrue(file.nextRow());
+      assertEquals(1, file.currentRow());
+      assertEquals("A", file.get(col1));
+      // the second row has two values so an exception is thrown, but current
+      // row is incremented so that processing can continue after the bad row
+      final var e = assertThrows(DomainException.class, file::nextRow);
+      assertEquals(errorMsg("too many columns", 2), e.getMessage());
+      assertEquals(2, file.currentRow());
+      // call nextRow to move to the third row and continue processing
+      assertTrue(file.nextRow());
+      assertEquals(3, file.currentRow());
+      assertEquals("D", file.get(col1));
+    }
+
+    @Test
+    void notEnoughColumnsError() {
+      final var file = create(Set.of(col1, col2), "col1\tcol2", "A", "B\tC");
+      final var e = assertThrows(DomainException.class, file::nextRow);
+      assertEquals(errorMsg("not enough columns", 1), e.getMessage());
+      // call nextRow to move to the second row and continue processing
+      assertTrue(file.nextRow());
+      assertEquals(2, file.currentRow());
+      assertEquals("B", file.get(col1));
+      assertEquals("C", file.get(col2));
+    }
+  }
+
+  @Nested
   class GetDataTest {
     @Test
-    void getStringValue() {
+    void stringValue() {
       final var expected = "Val";
       final var file = create(Set.of(col1), "col1", expected);
       assertTrue(file.nextRow());
@@ -158,7 +197,7 @@ class ColumnFileTest {
     }
 
     @Test
-    void nextRowIsFalseAtEndOfFile() {
+    void canGetValuesAtEndOfFile() {
       final var file = create(Set.of(col1, col2), "col1\tcol2", "A\tB");
       assertTrue(file.nextRow());
       assertEquals(1, file.currentRow());
@@ -169,7 +208,6 @@ class ColumnFileTest {
       assertEquals(1, file.currentRow());
       assertEquals("A", file.get(col1));
       assertEquals("B", file.get(col2));
-      assertFalse(file.nextRow());
     }
 
     @Test
@@ -195,35 +233,6 @@ class ColumnFileTest {
     }
 
     @Test
-    void nextRowErrorForRowWithTooManyColumns() {
-      final var file = create(Set.of(col1), "col1", "A", "B\tC", "D");
-      assertTrue(file.nextRow());
-      assertEquals(1, file.currentRow());
-      assertEquals("A", file.get(col1));
-      // the second row has two values so an exception is thrown, but current
-      // row is incremented so that processing can continue after the bad row
-      final var e = assertThrows(DomainException.class, file::nextRow);
-      assertEquals(errorMsg("too many columns", 2), e.getMessage());
-      assertEquals(2, file.currentRow());
-      // call nextRow to move to the third row and continue processing
-      assertTrue(file.nextRow());
-      assertEquals(3, file.currentRow());
-      assertEquals("D", file.get(col1));
-    }
-
-    @Test
-    void nextRowErrorForRowWithNotEnoughColumns() {
-      final var file = create(Set.of(col1, col2), "col1\tcol2", "A", "B\tC");
-      final var e = assertThrows(DomainException.class, file::nextRow);
-      assertEquals(errorMsg("not enough columns", 1), e.getMessage());
-      // call nextRow to move to the second row and continue processing
-      assertTrue(file.nextRow());
-      assertEquals(2, file.currentRow());
-      assertEquals("B", file.get(col1));
-      assertEquals("C", file.get(col2));
-    }
-
-    @Test
     void getBeforeNextRowError() {
       final var file = create(Set.of(col1), "col1", "Val");
       final var e = assertThrows(DomainException.class, () -> file.get(col1));
@@ -232,7 +241,7 @@ class ColumnFileTest {
     }
 
     @Test
-    void getUnrecognizedColumnError() {
+    void unrecognizedColumnError() {
       final var file = create(Set.of(col1), "col1", "Val");
       assertTrue(file.nextRow());
       final var col = new Column("Created After");
@@ -242,7 +251,7 @@ class ColumnFileTest {
     }
 
     @Test
-    void getInvalidColumnError() {
+    void invalidColumnError() {
       final var col = new Column("Created Before");
       final var file = create(Set.of(col1), "col1", "Val");
       assertTrue(file.nextRow());
