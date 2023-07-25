@@ -1,4 +1,4 @@
-package kt.utils;
+package com.github.anzumura.kt.utils;
 
 /**
  * DomainException is thrown when data loaded from files on startup is

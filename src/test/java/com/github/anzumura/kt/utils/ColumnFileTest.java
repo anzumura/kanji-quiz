@@ -1,4 +1,4 @@
-package kt.utils;
+package com.github.anzumura.kt.utils;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
-import static kt.utils.ColumnFile.Column;
+import static com.github.anzumura.kt.utils.ColumnFile.Column;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ColumnFileTest {
