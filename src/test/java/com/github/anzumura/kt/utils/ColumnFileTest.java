@@ -71,6 +71,17 @@ class ColumnFileTest {
     void toStringReturnsName() {
       assertEquals(col1.getName(), col1.toString());
     }
+
+    @Test
+    void equalsTest() {
+      final var same = "same name";
+      final Column c1 = new Column(same), c2 = new Column(same);
+      Object x = same;
+      assertNotEquals(c1, x); // classes are different
+      x = c2;
+      assertEquals(c1, x);
+      assertNotEquals(c1, new Column("different name"));
+    }
   }
 
   @Nested
@@ -183,6 +194,36 @@ class ColumnFileTest {
       assertEquals(2, file.currentRow());
       assertEquals("B", file.get(col1));
       assertEquals("C", file.get(col2));
+    }
+
+    @Test
+    void failedRead() throws IOException {
+      final var path = Files.createFile(tempDir.resolve(testFile));
+      Files.write(path, List.of("col1"));
+      final var file = new ColumnFile(path, Set.of(col1)) {
+        @Override
+        protected String readRow() throws IOException {
+          throw new IOException("read failed");
+        }
+      };
+      final var e = assertThrows(DomainException.class, file::nextRow);
+      assertEquals("failed to read next row: read failed - file: test.txt",
+          e.getMessage());
+    }
+
+    @Test
+    void failedClose() throws IOException {
+      final var path = Files.createFile(tempDir.resolve(testFile));
+      Files.write(path, List.of("col1"));
+      final var file = new ColumnFile(path, Set.of(col1)) {
+        @Override
+        protected void closeReader() throws IOException {
+          throw new IOException("close failed");
+        }
+      };
+      final var e = assertThrows(DomainException.class, file::nextRow);
+      assertEquals("failed to close reader: close failed",
+          e.getMessage());
     }
   }
 

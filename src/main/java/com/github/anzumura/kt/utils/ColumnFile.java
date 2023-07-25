@@ -101,25 +101,14 @@ public class ColumnFile {
   public boolean nextRow() {
     if (closed)
       throw new DomainException("file: " + fileName + "' has been closed");
+    if (processNextRow())
+      return true;
     try {
-      final var row = reader.readLine();
-      if (row != null) {
-        ++currentRow;
-        var pos = 0;
-        // pass -1 to split to force it to keep empty strings at the end
-        for (var field : row.split(delimiter, -1)) {
-          if (pos == numColumns())
-            throw error("too many columns");
-          rowValues[pos++] = field;
-        }
-        if (pos < numColumns())
-          throw error("not enough columns");
-        return true;
-      }
+      closeReader();
+      closed = true;
     } catch (IOException e) {
-      throw error("failed to read next row: " + e.getMessage());
+      throw new DomainException("failed to close reader: " + e.getMessage());
     }
-    closeReader();
     return false;
   }
 
@@ -139,6 +128,14 @@ public class ColumnFile {
     if (pos == COLUMN_NOT_FOUND)
       throw error("invalid column '" + column + "'");
     return rowValues[pos];
+  }
+
+  protected String readRow() throws IOException {
+    return reader.readLine();
+  }
+
+  protected void closeReader() throws IOException {
+    reader.close();
   }
 
   private void processHeaderRow(String row, Set<Column> columns) {
@@ -161,20 +158,33 @@ public class ColumnFile {
           .sorted().collect(Collectors.joining("', '")) + "'");
   }
 
+  private boolean processNextRow() {
+    try {
+      final var row = readRow();
+      if (row != null) {
+        ++currentRow;
+        var pos = 0;
+        // pass -1 to split to force it to keep empty strings at the end
+        for (var field : row.split(delimiter, -1)) {
+          if (pos == numColumns())
+            throw error("too many columns");
+          rowValues[pos++] = field;
+        }
+        if (pos < numColumns())
+          throw error("not enough columns");
+        return true;
+      }
+    } catch (IOException e) {
+      throw error("failed to read next row: " + e.getMessage());
+    }
+    return false;
+  }
+
   private DomainException error(String msg) {
     var result = msg + " - file: " + fileName;
     if (currentRow > 0)
       result += ", row: " + currentRow;
     return new DomainException(result);
-  }
-
-  private void closeReader() {
-    try {
-      reader.close();
-      closed = true;
-    } catch (IOException e) {
-      throw new DomainException("failed to close file: " + e.getMessage());
-    }
   }
 
   /**
