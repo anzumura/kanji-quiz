@@ -18,7 +18,7 @@ import java.util.stream.Collectors;
 public class ColumnFile {
 
   private static final HashMap<String, Integer> allColumns = new HashMap<>();
-  private static final int COLUMN_NOT_FOUND = -1;
+  private static final int COLUMN_NOT_FOUND = -1, NO_MAX_VALUE = -1;
 
   private final String fileName;
   private final String delimiter;
@@ -113,11 +113,10 @@ public class ColumnFile {
   }
 
   /**
-   * @param column the column to get value from
+   * @param column column contained in this file
    * @return string value for the given {@code column} in current row
    * @throws DomainException if nextRow hasn't been called yet or the given
-   *                         column isn't part of this file, i.e., it wasn't
-   *                         passed into the ctor
+   *                         column isn't part of this file
    */
   public String get(Column column) {
     if (currentRow == 0)
@@ -128,6 +127,28 @@ public class ColumnFile {
     if (pos == COLUMN_NOT_FOUND)
       throw error("invalid column '" + column + "'");
     return rowValues[pos];
+  }
+
+  /**
+   * @param column column contained in this file
+   * @return unsigned int value for the given {@code column} in current row
+   * @throws DomainException if {@link #get} fails or value can't be converted
+   *                         to an unsigned int
+   */
+  public int getUnsignedInt(Column column) {
+    return processUnsignedInt(get(column), column, NO_MAX_VALUE);
+  }
+
+  /**
+   * @param column   column contained in this file
+   * @param maxValue maximum value allowed (check is only applied if maxValue is
+   *                 non-negative)
+   * @return unsigned int value for the given {@code column} in current row
+   * @throws DomainException if unable to get unsigned int less than or equal to
+   *                         {@code maxValue}
+   */
+  public int getUnsignedInt(Column column, int maxValue) {
+    return processUnsignedInt(get(column), column, maxValue);
   }
 
   protected String readRow() throws IOException {
@@ -180,11 +201,32 @@ public class ColumnFile {
     return false;
   }
 
+  private int processUnsignedInt(String s, Column column, int max) {
+    int result;
+    try {
+      result = Integer.parseUnsignedInt(s);
+    } catch (NumberFormatException e) {
+      throw error("failed to convert to unsigned int", column, s);
+    }
+    if (max >= 0 && max < result)
+      throw error("exceeded max value of " + max, column, s);
+    return result;
+  }
+
   private DomainException error(String msg) {
+    return new DomainException(errorMsg(msg));
+  }
+
+  private DomainException error(String msg, Column column, String s) {
+    return new DomainException(
+        errorMsg(msg) + ", column: '" + column + "', " + "value: '" + s + "'");
+  }
+
+  private String errorMsg(String msg) {
     var result = msg + " - file: " + fileName;
     if (currentRow > 0)
       result += ", row: " + currentRow;
-    return new DomainException(result);
+    return result;
   }
 
   /**

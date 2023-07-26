@@ -29,6 +29,10 @@ class ColumnFileTest {
     return errorMsg(msg) + ", row: " + row;
   }
 
+  private static String errorMsg(String msg, int row, Column c, String s) {
+    return errorMsg(msg, row) + ", column: '" + c + "', value: '" + s + "'";
+  }
+
   private ColumnFile create(
       String delimiter, Set<Column> columns, String... lines) {
     try {
@@ -161,52 +165,52 @@ class ColumnFileTest {
   class NextRowTest {
     @Test
     void calledAfterCloseError() {
-      final var file = create(Set.of(col1), "col1");
-      assertFalse(file.nextRow());
-      final var e = assertThrows(DomainException.class, file::nextRow);
+      final var f = create(Set.of(col1), "col1");
+      assertFalse(f.nextRow());
+      final var e = assertThrows(DomainException.class, f::nextRow);
       assertEquals("file: " + testFile + "' has been closed", e.getMessage());
     }
 
     @Test
     void tooManyColumnsError() {
-      final var file = create(Set.of(col1), "col1", "A", "B\tC", "D");
-      assertTrue(file.nextRow());
-      assertEquals(1, file.currentRow());
-      assertEquals("A", file.get(col1));
+      final var f = create(Set.of(col1), "col1", "A", "B\tC", "D");
+      assertTrue(f.nextRow());
+      assertEquals(1, f.currentRow());
+      assertEquals("A", f.get(col1));
       // the second row has two values so an exception is thrown, but current
       // row is incremented so that processing can continue after the bad row
-      final var e = assertThrows(DomainException.class, file::nextRow);
+      final var e = assertThrows(DomainException.class, f::nextRow);
       assertEquals(errorMsg("too many columns", 2), e.getMessage());
-      assertEquals(2, file.currentRow());
+      assertEquals(2, f.currentRow());
       // call nextRow to move to the third row and continue processing
-      assertTrue(file.nextRow());
-      assertEquals(3, file.currentRow());
-      assertEquals("D", file.get(col1));
+      assertTrue(f.nextRow());
+      assertEquals(3, f.currentRow());
+      assertEquals("D", f.get(col1));
     }
 
     @Test
     void notEnoughColumnsError() {
-      final var file = create(Set.of(col1, col2), "col1\tcol2", "A", "B\tC");
-      final var e = assertThrows(DomainException.class, file::nextRow);
+      final var f = create(Set.of(col1, col2), "col1\tcol2", "A", "B\tC");
+      final var e = assertThrows(DomainException.class, f::nextRow);
       assertEquals(errorMsg("not enough columns", 1), e.getMessage());
       // call nextRow to move to the second row and continue processing
-      assertTrue(file.nextRow());
-      assertEquals(2, file.currentRow());
-      assertEquals("B", file.get(col1));
-      assertEquals("C", file.get(col2));
+      assertTrue(f.nextRow());
+      assertEquals(2, f.currentRow());
+      assertEquals("B", f.get(col1));
+      assertEquals("C", f.get(col2));
     }
 
     @Test
     void failedRead() throws IOException {
       final var path = Files.createFile(tempDir.resolve(testFile));
       Files.write(path, List.of("col1"));
-      final var file = new ColumnFile(path, Set.of(col1)) {
+      final var f = new ColumnFile(path, Set.of(col1)) {
         @Override
         protected String readRow() throws IOException {
           throw new IOException("read failed");
         }
       };
-      final var e = assertThrows(DomainException.class, file::nextRow);
+      final var e = assertThrows(DomainException.class, f::nextRow);
       assertEquals("failed to read next row: read failed - file: test.txt",
           e.getMessage());
     }
@@ -215,15 +219,14 @@ class ColumnFileTest {
     void failedClose() throws IOException {
       final var path = Files.createFile(tempDir.resolve(testFile));
       Files.write(path, List.of("col1"));
-      final var file = new ColumnFile(path, Set.of(col1)) {
+      final var f = new ColumnFile(path, Set.of(col1)) {
         @Override
         protected void closeReader() throws IOException {
           throw new IOException("close failed");
         }
       };
-      final var e = assertThrows(DomainException.class, file::nextRow);
-      assertEquals("failed to close reader: close failed",
-          e.getMessage());
+      final var e = assertThrows(DomainException.class, f::nextRow);
+      assertEquals("failed to close reader: close failed", e.getMessage());
     }
   }
 
@@ -232,61 +235,61 @@ class ColumnFileTest {
     @Test
     void stringValue() {
       final var expected = "Val";
-      final var file = create(Set.of(col1), "col1", expected);
-      assertTrue(file.nextRow());
-      assertEquals(expected, file.get(col1));
+      final var f = create(Set.of(col1), "col1", expected);
+      assertTrue(f.nextRow());
+      assertEquals(expected, f.get(col1));
     }
 
     @Test
     void canGetValuesAtEndOfFile() {
-      final var file = create(Set.of(col1, col2), "col1\tcol2", "A\tB");
-      assertTrue(file.nextRow());
-      assertEquals(1, file.currentRow());
-      assertEquals("A", file.get(col1));
-      assertEquals("B", file.get(col2));
-      assertFalse(file.nextRow());
+      final var f = create(Set.of(col1, col2), "col1\tcol2", "A\tB");
+      assertTrue(f.nextRow());
+      assertEquals(1, f.currentRow());
+      assertEquals("A", f.get(col1));
+      assertEquals("B", f.get(col2));
+      assertFalse(f.nextRow());
       // current row is still the last successfully processed row
-      assertEquals(1, file.currentRow());
-      assertEquals("A", file.get(col1));
-      assertEquals("B", file.get(col2));
+      assertEquals(1, f.currentRow());
+      assertEquals("A", f.get(col1));
+      assertEquals("B", f.get(col2));
     }
 
     @Test
     void valuesCanBeBlank() {
-      final var file =
+      final var f =
           create(Set.of(col1, col2, col3), "col1\tcol2\tcol3", "\tB\tC",
               "A\t\tC", "\t\t");
-      file.nextRow(); // first value is empty
-      assertEquals("", file.get(col1));
-      assertEquals("B", file.get(col2));
-      assertEquals("C", file.get(col3));
-      file.nextRow(); // second value is empty
-      assertEquals("A", file.get(col1));
-      assertEquals("", file.get(col2));
-      assertEquals("C", file.get(col3));
-      file.nextRow(); // all values are empty
-      assertEquals("", file.get(col1));
-      assertEquals("", file.get(col2));
-      assertEquals("", file.get(col3));
+      f.nextRow(); // first value is empty
+      assertEquals("", f.get(col1));
+      assertEquals("B", f.get(col2));
+      assertEquals("C", f.get(col3));
+      f.nextRow(); // second value is empty
+      assertEquals("A", f.get(col1));
+      assertEquals("", f.get(col2));
+      assertEquals("C", f.get(col3));
+      f.nextRow(); // all values are empty
+      assertEquals("", f.get(col1));
+      assertEquals("", f.get(col2));
+      assertEquals("", f.get(col3));
       // make sure all data has been read
-      assertFalse(file.nextRow());
-      assertEquals(3, file.currentRow());
+      assertFalse(f.nextRow());
+      assertEquals(3, f.currentRow());
     }
 
     @Test
     void getBeforeNextRowError() {
-      final var file = create(Set.of(col1), "col1", "Val");
-      final var e = assertThrows(DomainException.class, () -> file.get(col1));
+      final var f = create(Set.of(col1), "col1", "Val");
+      final var e = assertThrows(DomainException.class, () -> f.get(col1));
       assertEquals(errorMsg("'nextRow' must be called before calling 'get'"),
           e.getMessage());
     }
 
     @Test
     void unrecognizedColumnError() {
-      final var file = create(Set.of(col1), "col1", "Val");
-      assertTrue(file.nextRow());
+      final var f = create(Set.of(col1), "col1", "Val");
+      assertTrue(f.nextRow());
       final var col = new Column("Created After");
-      final var e = assertThrows(DomainException.class, () -> file.get(col));
+      final var e = assertThrows(DomainException.class, () -> f.get(col));
       assertEquals(errorMsg("unrecognized column 'Created After'", 1),
           e.getMessage());
     }
@@ -294,10 +297,57 @@ class ColumnFileTest {
     @Test
     void invalidColumnError() {
       final var col = new Column("Created Before");
-      final var file = create(Set.of(col1), "col1", "Val");
-      assertTrue(file.nextRow());
-      final var e = assertThrows(DomainException.class, () -> file.get(col));
+      final var f = create(Set.of(col1), "col1", "Val");
+      assertTrue(f.nextRow());
+      final var e = assertThrows(DomainException.class, () -> f.get(col));
       assertEquals(errorMsg("invalid column 'Created Before'", 1),
+          e.getMessage());
+    }
+
+    @Test
+    void unsignedInt() {
+      final var f = create(Set.of(col1, col2), "col1\tcol2", "0\t123");
+      f.nextRow();
+      assertEquals(0, f.getUnsignedInt(col1));
+      assertEquals(123, f.getUnsignedInt(col2));
+    }
+
+    @Test
+    void unsignedIntError() {
+      final var f = create(Set.of(col1, col2), "col1\tcol2", "bad\t-123");
+      f.nextRow();
+      var e = assertThrows(DomainException.class, () -> f.getUnsignedInt(col1));
+      assertEquals(
+          errorMsg("failed to convert to unsigned int", 1, col1, "bad"),
+          e.getMessage());
+      e = assertThrows(DomainException.class, () -> f.getUnsignedInt(col2));
+      assertEquals(
+          errorMsg("failed to convert to unsigned int", 1, col2, "-123"),
+          e.getMessage());
+    }
+
+    @Test
+    void unsignedIntWithMaxValue() {
+      final var f = create(Set.of(col1), "col1", "0", "123");
+      f.nextRow();
+      assertEquals(0, f.getUnsignedInt(col1, 0));
+      f.nextRow();
+      assertEquals(123, f.getUnsignedInt(col1, -1));
+      assertEquals(123, f.getUnsignedInt(col1, 123));
+      assertEquals(123, f.getUnsignedInt(col1, Integer.MAX_VALUE));
+    }
+
+    @Test
+    void unsignedIntWithMaxValueError() {
+      final var f = create(Set.of(col1), "col1", "18", "100");
+      f.nextRow();
+      var e =
+          assertThrows(DomainException.class, () -> f.getUnsignedInt(col1, 0));
+      assertEquals(errorMsg("exceeded max value of 0", 1, col1, "18"),
+          e.getMessage());
+      f.nextRow();
+      e = assertThrows(DomainException.class, () -> f.getUnsignedInt(col1, 99));
+      assertEquals(errorMsg("exceeded max value of 99", 2, col1, "100"),
           e.getMessage());
     }
   }
