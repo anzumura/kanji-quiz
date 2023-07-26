@@ -1,4 +1,4 @@
-package com.github.anzumura.kt.utils;
+package com.github.anzumura.kt;
 
 import java.io.BufferedReader;
 import java.io.IOException;
