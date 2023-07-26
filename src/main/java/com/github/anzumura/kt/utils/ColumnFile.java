@@ -151,6 +151,20 @@ public class ColumnFile {
     return processUnsignedInt(get(column), column, maxValue);
   }
 
+  /**
+   * @param column column contained in this file
+   * @return true for "Y" or "T", false for "N", "F" or ""
+   * @throws DomainException if {@link #get} fails or value is unrecognized
+   */
+  public boolean getBoolean(Column column) {
+    final var s = get(column);
+    return switch (s) {
+      case "Y", "T" -> true;
+      case "N", "F", "" -> false;
+      default -> throw error("convert to boolean failed", column, s);
+    };
+  }
+
   protected String readRow() throws IOException {
     return reader.readLine();
   }
@@ -206,7 +220,7 @@ public class ColumnFile {
     try {
       result = Integer.parseUnsignedInt(s);
     } catch (NumberFormatException e) {
-      throw error("failed to convert to unsigned int", column, s);
+      throw error("convert to unsigned int failed", column, s);
     }
     if (max >= 0 && max < result)
       throw error("exceeded max value of " + max, column, s);

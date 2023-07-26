@@ -305,7 +305,7 @@ class ColumnFileTest {
     }
 
     @Test
-    void unsignedInt() {
+    void getUnsignedInt() {
       final var f = create(Set.of(col1, col2), "col1\tcol2", "0\t123");
       f.nextRow();
       assertEquals(0, f.getUnsignedInt(col1));
@@ -313,21 +313,19 @@ class ColumnFileTest {
     }
 
     @Test
-    void unsignedIntError() {
+    void getUnsignedIntError() {
       final var f = create(Set.of(col1, col2), "col1\tcol2", "bad\t-123");
       f.nextRow();
       var e = assertThrows(DomainException.class, () -> f.getUnsignedInt(col1));
-      assertEquals(
-          errorMsg("failed to convert to unsigned int", 1, col1, "bad"),
+      assertEquals(errorMsg("convert to unsigned int failed", 1, col1, "bad"),
           e.getMessage());
       e = assertThrows(DomainException.class, () -> f.getUnsignedInt(col2));
-      assertEquals(
-          errorMsg("failed to convert to unsigned int", 1, col2, "-123"),
+      assertEquals(errorMsg("convert to unsigned int failed", 1, col2, "-123"),
           e.getMessage());
     }
 
     @Test
-    void unsignedIntWithMaxValue() {
+    void getUnsignedIntWithMaxValue() {
       final var f = create(Set.of(col1), "col1", "0", "123");
       f.nextRow();
       assertEquals(0, f.getUnsignedInt(col1, 0));
@@ -338,7 +336,7 @@ class ColumnFileTest {
     }
 
     @Test
-    void unsignedIntWithMaxValueError() {
+    void getUnsignedIntWithMaxValueError() {
       final var f = create(Set.of(col1), "col1", "18", "100");
       f.nextRow();
       var e =
@@ -349,6 +347,25 @@ class ColumnFileTest {
       e = assertThrows(DomainException.class, () -> f.getUnsignedInt(col1, 99));
       assertEquals(errorMsg("exceeded max value of 99", 2, col1, "100"),
           e.getMessage());
+    }
+
+    @Test
+    void getBoolean() {
+      final var f =
+          create(Set.of(col1, col2, col3), "col1\tcol2\tcol3", "Y\tT\tx",
+              "N\tF\t");
+      f.nextRow();
+      assertAll(() -> assertTrue(f.getBoolean(col1)),
+          () -> assertTrue(f.getBoolean(col2)), () -> {
+            final var e =
+                assertThrows(DomainException.class, () -> f.getBoolean(col3));
+            assertEquals(errorMsg("convert to boolean failed", 1, col3, "x"),
+                e.getMessage());
+          });
+      f.nextRow();
+      assertAll(() -> assertFalse(f.getBoolean(col1)),
+          () -> assertFalse(f.getBoolean(col2)),
+          () -> assertFalse(f.getBoolean(col3)));
     }
   }
 }
