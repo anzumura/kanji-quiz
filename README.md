@@ -11,7 +11,8 @@ more features from later releases.
 Here are examples of new Java features per version:
 
 - Java 7: strings in switch, diamond operator, java.nio, binary literals
-- Java 8: lambdas, language support for collections, streams
+- Java 8: lambdas, Optional, forEach, default methods, streams, etc.
+- Java 9: language support for creating collections (List.of, Set.of, etc.)
 - Java 10: [var for local variables](https://openjdk.java.net/jeps/286)
 - Java 14: [switch expressions](https://openjdk.java.net/jeps/361)
 - Java 15: [text blocks](https://openjdk.java.net/jeps/378)
