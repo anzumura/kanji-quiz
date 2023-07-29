@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
  * containing the column names
  */
 public class ColumnFile {
-
   private static final HashMap<String, Integer> allColumns = new HashMap<>();
   private static final int COLUMN_NOT_FOUND = -1, NO_MAX_VALUE = -1;
 
