@@ -17,6 +17,8 @@ public final class KenteiKanji extends Kanji.Standard {
     super(new Fields(name, radical, strokes),
         new LoadedFields(meaning, reading),
         new OtherFields(oldLinks, linkNames, linkedReadings), kyu);
+    if (kyu == Kyu.None)
+      throw error("must have a valid Kyu");
   }
 
   @Override

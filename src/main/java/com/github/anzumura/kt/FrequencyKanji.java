@@ -19,6 +19,8 @@ public final class FrequencyKanji extends Kanji.Standard {
     super(new Fields(name, radical, strokes),
         new LoadedFields(meaning, reading),
         new OtherFields(oldLinks, linkNames, linkedReadings), kyu);
+    if (frequency <= 0)
+      throw error("frequency must be greater than zero");
     this.frequency = frequency;
   }
 

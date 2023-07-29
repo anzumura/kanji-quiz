@@ -13,6 +13,10 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
     this.fields = fields;
   }
 
+  protected DomainException error(String msg) {
+    return new DomainException(getClass().getSimpleName() + ": " + msg);
+  }
+
   /**
    * @return type of this Kanji (unique for each leaf class)
    */
@@ -142,7 +146,7 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
   /**
    * @return link back to a Jouyou or Jinmei Kanji
    */
-  public Optional<Kanji.Official> getLink() {
+  public Optional<Kanji> getLink() {
     return Optional.empty();
   }
 
@@ -281,15 +285,14 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
     }
 
     @Override
-    public Optional<Kanji.Official> getLink() {
+    public Optional<Kanji> getLink() {
       return Optional.of(fields.link);
     }
 
     /**
      * additional fields for Linked Kanji classes
      */
-    protected record LinkedFields(Kanji.Official link, int frequency,
-                                  Kyu kyu) {}
+    protected record LinkedFields(Kanji link, int frequency, Kyu kyu) {}
   }
 
   // abstract subclasses of Kanji.Loaded
@@ -306,6 +309,8 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
     protected Numbered(
         Fields fields, LoadedFields loaded, NumberedFields numbered) {
       super(fields, loaded);
+      if (numbered.number <= 0)
+        throw error("number must be greater than zero");
       this.fields = numbered;
     }
 

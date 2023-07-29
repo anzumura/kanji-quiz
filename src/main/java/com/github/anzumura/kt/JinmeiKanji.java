@@ -16,6 +16,12 @@ public final class JinmeiKanji extends Kanji.Official {
     super(new Fields(name, radical, strokes),
         new LoadedFields(meaning, reading), new NumberedFields(kyu, number),
         new OfficialFields(level, frequency, year));
+    if (reason == JinmeiReason.None)
+      throw error("must have a valid reason");
+    // Jinmei Kanji have year values starting at 1951, but for now just ensure
+    // it's non-zero to prevent the case of constructing without a year
+    if (year == 0)
+      throw error("must have a valid year");
     this.reason = reason;
   }
 

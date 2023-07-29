@@ -15,6 +15,8 @@ public final class JouyouKanji extends Kanji.Official {
     super(new Fields(name, radical, strokes),
         new LoadedFields(meaning, reading), new NumberedFields(kyu, number),
         new OfficialFields(level, frequency, year));
+    if (grade == Grade.None)
+      throw error("must have a valid grade");
     this.grade = grade;
   }
 
