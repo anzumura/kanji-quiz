@@ -16,7 +16,7 @@ Here are examples of new Java features per version:
 - Java 10: [var for local variables](https://openjdk.java.net/jeps/286)
 - Java 14: [switch expressions](https://openjdk.java.net/jeps/361)
 - Java 15: [text blocks](https://openjdk.java.net/jeps/378)
-- Java 16: [pattern matching for instance of](https://openjdk.java.net/jeps/394)
+- Java 16: [pattern matching for instance of](https://openjdk.java.net/jeps/394), [records](https://openjdk.java.net/jeps/395)
 - Java 17: [sealed classes](https://openjdk.java.net/jeps/409)
 
 The project JDK version is currently set to **Java 17** which is the latest

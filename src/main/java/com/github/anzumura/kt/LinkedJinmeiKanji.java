@@ -10,8 +10,14 @@ package com.github.anzumura.kt;
  * </ul>
  */
 public final class LinkedJinmeiKanji extends Kanji.Linked {
-  public LinkedJinmeiKanji(Kanji.Official link, int frequency, Kyu kyu) {
-    super(link, frequency, kyu);
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
+  public LinkedJinmeiKanji(
+      String name, String radical, int strokes, Kanji.Official link,
+      int frequency, Kyu kyu) {
+    super(new Fields(name, radical, strokes),
+        new LinkedFields(link, frequency, kyu));
   }
 
   @Override

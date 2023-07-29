@@ -7,12 +7,20 @@ import java.util.List;
  * other files
  */
 public final class KenteiKanji extends Kanji.Standard {
-  @Override public Type getType() {
-    return Type.Kentei;
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
+  public KenteiKanji(
+      String name, String radical, int strokes, String meaning, String reading,
+      boolean oldLinks, List<String> linkNames, boolean linkedReadings,
+      Kyu kyu) {
+    super(new Fields(name, radical, strokes),
+        new LoadedFields(meaning, reading),
+        new OtherFields(oldLinks, linkNames, linkedReadings), kyu);
   }
 
-  public KenteiKanji(String meaning, String reading, Kyu kyu, boolean oldLinks,
-                     boolean linkedReadings, List<String> linkNames) {
-    super(meaning, reading, kyu, oldLinks, linkedReadings, linkNames);
+  @Override
+  public Type getType() {
+    return Type.Kentei;
   }
 }

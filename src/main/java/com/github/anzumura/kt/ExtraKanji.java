@@ -11,9 +11,14 @@ import java.util.Optional;
 public final class ExtraKanji extends Kanji.Numbered {
   private final String newName;
 
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
   public ExtraKanji(
-      String meaning, String reading, String newName, Kyu kyu, int number) {
-    super(meaning, reading, kyu, number);
+      String name, String radical, int strokes, String meaning, String reading,
+      Kyu kyu, int number, String newName) {
+    super(new Fields(name, radical, strokes),
+        new LoadedFields(meaning, reading), new NumberedFields(kyu, number));
     this.newName = newName.isEmpty() ? null : newName;
   }
 

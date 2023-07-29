@@ -5,7 +5,6 @@ package com.github.anzumura.kt;
  * inconsistent or malformed, or when internal program logic errors occur.
  */
 public class DomainException extends RuntimeException {
-
   /**
    * @param message exception message
    */

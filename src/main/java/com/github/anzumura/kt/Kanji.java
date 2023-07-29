@@ -7,11 +7,37 @@ import java.util.Optional;
  * abstract base class representing a Japanese Kanji character
  */
 public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
+  private final Fields fields;
+
+  protected Kanji(Fields fields) {
+    this.fields = fields;
+  }
 
   /**
    * @return type of this Kanji (unique for each leaf class)
    */
   public abstract Type getType();
+
+  /**
+   * @return Kanji name (as a UTF-8 String), i.e., 青, 犬, 家, etc.
+   */
+  public String getName() {
+    return fields.name;
+  }
+
+  /**
+   * @return Kanji official 'Radical', i.e.,衤,氵,彳, etc.
+   */
+  public String getRadical() {
+    return fields.radical;
+  }
+
+  /**
+   * @return Kanji stroke count
+   */
+  public int getStrokes() {
+    return fields.strokes;
+  }
 
   /**
    * @return list of English meanings (some 'Other' Kanji return empty string)
@@ -35,7 +61,7 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
   /**
    * @return true if readings were loaded via a link
    */
-  public boolean hasLinkedReadings() {
+  public boolean hasLinkedReading() {
     return false;
   }
 
@@ -97,6 +123,13 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public Kyu getKyu() {
     return Kyu.None;
+  }
+
+  /**
+   * @return row number in custom file (jouyou, jinmei, extra), otherwise 0
+   */
+  public int getNumber() {
+    return 0;
   }
 
   /**
@@ -165,6 +198,11 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
     None     // Not a Jinmei type Kanji
   }
 
+  /**
+   * common fields for all Kanji classes
+   */
+  protected record Fields(String name, String radical, int strokes) {}
+
   // abstract subclasses of Kanji
 
   /**
@@ -172,23 +210,27 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public abstract static sealed class Loaded extends Kanji permits Numbered,
       Other {
-    private final String meaning;
-    private final String reading;
+    private final LoadedFields fields;
 
-    protected Loaded(String meaning, String reading) {
-      this.meaning = meaning;
-      this.reading = reading;
+    protected Loaded(Fields fields, LoadedFields loaded) {
+      super(fields);
+      this.fields = loaded;
     }
 
     @Override
     public String getMeaning() {
-      return meaning;
+      return fields.meaning;
     }
 
     @Override
     public String getReading() {
-      return reading;
+      return fields.reading;
     }
+
+    /**
+     * additional fields for Loaded Kanji classes
+     */
+    protected record LoadedFields(String meaning, String reading) {}
   }
 
   /**
@@ -199,40 +241,55 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public abstract static sealed class Linked extends Kanji permits
       LinkedJinmeiKanji, LinkedOldKanji {
-    private final Kanji.Official link;
-    private final int frequency;
-    private final Kyu kyu;
 
-    protected Linked(Kanji.Official link, int frequency, Kyu kyu) {
-      this.link = link;
-      this.frequency = frequency;
-      this.kyu = kyu;
+    private final LinkedFields fields;
+
+    protected Linked(
+        Fields fields, LinkedFields linked) {
+      super(fields);
+      this.fields = linked;
     }
 
     @Override
     public String getMeaning() {
-      return link.getMeaning();
+      return fields.link.getMeaning();
     }
 
     @Override
     public String getReading() {
-      return link.getReading();
+      return fields.link.getReading();
+    }
+
+    @Override
+    public Optional<String> getNewName() {
+      return Optional.of(fields.link.getName());
+    }
+
+    @Override
+    public boolean hasLinkedReading() {
+      return true;
     }
 
     @Override
     public int getFrequency() {
-      return frequency;
+      return fields.frequency;
     }
 
     @Override
     public Kyu getKyu() {
-      return kyu;
+      return fields.kyu;
     }
 
     @Override
     public Optional<Kanji.Official> getLink() {
-      return Optional.of(link);
+      return Optional.of(fields.link);
     }
+
+    /**
+     * additional fields for Linked Kanji classes
+     */
+    protected record LinkedFields(Kanji.Official link, int frequency,
+                                  Kyu kyu) {}
   }
 
   // abstract subclasses of Kanji.Loaded
@@ -243,24 +300,29 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public abstract static sealed class Numbered extends Loaded permits Official,
       ExtraKanji {
-    private final Kyu kyu;
-    private final int number;
+
+    private final NumberedFields fields;
 
     protected Numbered(
-        String meaning, String reading, Kyu kyu, int number) {
-      super(meaning, reading);
-      this.kyu = kyu;
-      this.number = number;
+        Fields fields, LoadedFields loaded, NumberedFields numbered) {
+      super(fields, loaded);
+      this.fields = numbered;
     }
 
     @Override
     public Kyu getKyu() {
-      return kyu;
+      return fields.kyu;
     }
 
+    @Override
     public int getNumber() {
-      return number;
+      return fields.number;
     }
+
+    /**
+     * additional fields for Numbered Kanji classes
+     */
+    protected record NumberedFields(Kyu kyu, int number) {}
   }
 
   /**
@@ -269,34 +331,36 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public abstract static sealed class Other extends Loaded permits Standard,
       UcdKanji {
-    private final boolean oldLinks;
-    private final boolean linkedReadings;
-    private final List<String> linkNames;
+
+    private final OtherFields fields;
 
     protected Other(
-        String meaning, String reading, boolean oldLinks,
-        boolean linkedReadings, List<String> linkNames) {
-      super(meaning, reading);
-      this.oldLinks = oldLinks;
-      this.linkedReadings = linkedReadings;
-      this.linkNames = linkNames;
+        Fields fields, LoadedFields loaded, OtherFields other) {
+      super(fields, loaded);
+      this.fields = other;
     }
 
     @Override
     public List<String> getOldNames() {
-      return oldLinks ? linkNames : List.of();
+      return fields.oldLinks ? fields.linkNames : List.of();
     }
 
     @Override
     public Optional<String> getNewName() {
-      return linkNames.isEmpty() || oldLinks ? Optional.empty() :
-          Optional.of(linkNames.get(0));
+      return fields.linkNames.isEmpty() || fields.oldLinks ? Optional.empty() :
+          Optional.of(fields.linkNames.get(0));
     }
 
     @Override
-    public boolean hasLinkedReadings() {
-      return linkedReadings;
+    public boolean hasLinkedReading() {
+      return fields.linkedReadings;
     }
+
+    /**
+     * additional fields for Other Kanji classes
+     */
+    protected record OtherFields(boolean oldLinks, List<String> linkNames,
+                                 boolean linkedReadings) {}
   }
 
   // abstract subclasses of Kanji.Numbered
@@ -307,33 +371,35 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public abstract static sealed class Official extends Numbered permits
       JouyouKanji, JinmeiKanji {
-    private final Level level;
-    private final int frequency;
-    private final int year;
+
+    private final OfficialFields fields;
 
     protected Official(
-        String meaning, String reading, Kyu kyu, int number, Level level,
-        int frequency, int year) {
-      super(meaning, reading, kyu, number);
-      this.level = level;
-      this.frequency = frequency;
-      this.year = year;
+        Fields fields, LoadedFields loaded, NumberedFields numbered,
+        OfficialFields official) {
+      super(fields, loaded, numbered);
+      this.fields = official;
     }
 
     @Override
     public Level getLevel() {
-      return level;
+      return fields.level;
     }
 
     @Override
     public int getFrequency() {
-      return frequency;
+      return fields.frequency;
     }
 
     @Override
     public int getYear() {
-      return year;
+      return fields.year;
     }
+
+    /**
+     * additional fields for Official Kanji classes
+     */
+    protected record OfficialFields(Level level, int frequency, int year) {}
   }
 
   // abstract subclasses of Kanji.Other
@@ -343,12 +409,11 @@ public abstract sealed class Kanji permits Kanji.Loaded, Kanji.Linked {
    */
   public abstract static sealed class Standard extends Other permits
       FrequencyKanji, KenteiKanji {
-    private final Kyu kyu;
+    private final Kyu kyu; // don't make a 'fields' class for a single field
 
     protected Standard(
-        String meaning, String reading, Kyu kyu, boolean oldLinks,
-        boolean linkedReadings, List<String> linkNames) {
-      super(meaning, reading, oldLinks, linkedReadings, linkNames);
+        Fields fields, LoadedFields loaded, OtherFields other, Kyu kyu) {
+      super(fields, loaded, other);
       this.kyu = kyu;
     }
 

@@ -6,10 +6,16 @@ package com.github.anzumura.kt;
 public final class JinmeiKanji extends Kanji.Official {
   private final JinmeiReason reason;
 
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
   public JinmeiKanji(
-      String meaning, String reading, Kyu kyu, int number, Level level,
-      int frequency, int year, JinmeiReason reason) {
-    super(meaning, reading, kyu, number, level, frequency, year);
+      String name, String radical, int strokes, String meaning, String reading,
+      Kyu kyu, int number, Level level, int frequency, int year,
+      JinmeiReason reason) {
+    super(new Fields(name, radical, strokes),
+        new LoadedFields(meaning, reading), new NumberedFields(kyu, number),
+        new OfficialFields(level, frequency, year));
     this.reason = reason;
   }
 

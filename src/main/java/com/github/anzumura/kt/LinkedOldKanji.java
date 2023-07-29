@@ -5,8 +5,14 @@ package com.github.anzumura.kt;
  * that aren't already included in the 230 Jinmeiyō 'official variants'.
  */
 public final class LinkedOldKanji extends Kanji.Linked {
-  public LinkedOldKanji(Kanji.Official link, int frequency, Kyu kyu) {
-    super(link, frequency, kyu);
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
+  public LinkedOldKanji(
+      String name, String radical, int strokes, Kanji.Official link,
+      int frequency, Kyu kyu) {
+    super(new Fields(name, radical, strokes),
+        new LinkedFields(link, frequency, kyu));
   }
 
   @Override

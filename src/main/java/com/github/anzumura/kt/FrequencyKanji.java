@@ -9,10 +9,16 @@ import java.util.List;
 public final class FrequencyKanji extends Kanji.Standard {
   private final int frequency;
 
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
   public FrequencyKanji(
-      String meaning, String reading, Kyu kyu, boolean oldLinks,
-      boolean linkedReadings, List<String> linkNames, int frequency) {
-    super(meaning, reading, kyu, oldLinks, linkedReadings, linkNames);
+      String name, String radical, int strokes, String meaning, String reading,
+      boolean oldLinks, List<String> linkNames, boolean linkedReadings, Kyu kyu,
+      int frequency) {
+    super(new Fields(name, radical, strokes),
+        new LoadedFields(meaning, reading),
+        new OtherFields(oldLinks, linkNames, linkedReadings), kyu);
     this.frequency = frequency;
   }
 

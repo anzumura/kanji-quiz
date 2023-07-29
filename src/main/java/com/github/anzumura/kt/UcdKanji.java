@@ -8,10 +8,15 @@ import java.util.List;
  * others are pulled in via links and may not even have a Japanese reading.
  */
 public final class UcdKanji extends Kanji.Other {
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
   public UcdKanji(
-      String meaning, String reading, boolean oldLinks, boolean linkedReadings,
-      List<String> linkNames) {
-    super(meaning, reading, oldLinks, linkedReadings, linkNames);
+      String name, String radical, int strokes, String meaning, String reading,
+      boolean oldLinks, List<String> linkNames, boolean linkedReadings) {
+    super(new Fields(name, radical, strokes),
+        new LoadedFields(meaning, reading),
+        new OtherFields(oldLinks, linkNames, linkedReadings));
   }
 
   @Override

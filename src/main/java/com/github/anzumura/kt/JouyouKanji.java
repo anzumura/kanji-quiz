@@ -6,10 +6,15 @@ package com.github.anzumura.kt;
 public final class JouyouKanji extends Kanji.Official {
   private final Grade grade;
 
+  /**
+   * see Kanji class 'get' methods for details on parameters
+   */
   public JouyouKanji(
-      String meaning, String reading, Kyu kyu, int number, Level level,
-      int frequency, int year, Grade grade) {
-    super(meaning, reading, kyu, number, level, frequency, year);
+      String name, String radical, int strokes, String meaning, String reading,
+      Kyu kyu, int number, Level level, int frequency, int year, Grade grade) {
+    super(new Fields(name, radical, strokes),
+        new LoadedFields(meaning, reading), new NumberedFields(kyu, number),
+        new OfficialFields(level, frequency, year));
     this.grade = grade;
   }
 
