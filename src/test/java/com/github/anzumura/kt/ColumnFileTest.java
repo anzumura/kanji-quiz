@@ -168,7 +168,7 @@ class ColumnFileTest {
       final var f = create(Set.of(col1), "col1");
       assertFalse(f.nextRow());
       final var e = assertThrows(DomainException.class, f::nextRow);
-      assertEquals("file: " + testFile + "' has been closed", e.getMessage());
+      assertEquals("file: '" + testFile + "' has been closed", e.getMessage());
     }
 
     @Test

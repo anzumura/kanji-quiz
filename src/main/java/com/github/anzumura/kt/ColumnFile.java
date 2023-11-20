@@ -99,7 +99,7 @@ public class ColumnFile {
    */
   public boolean nextRow() {
     if (closed)
-      throw new DomainException("file: " + fileName + "' has been closed");
+      throw new DomainException("file: '" + fileName + "' has been closed");
     if (processNextRow())
       return true;
     try {
